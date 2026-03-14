@@ -3,60 +3,74 @@ from tkinter import filedialog, messagebox, scrolledtext
 import os
 
 matrix = None
+N = 19
 
 def choose_file():
+    """Обробка натискання кнопки 'Обрати' — вибір файлу + перевірка + запуск аналізу"""
     result_text.delete("1.0", tk.END)
-    global matrix 
+    global matrix
 
     filepath = filedialog.askopenfilename(
-        title="Выберите текстовый файл с матрицей",
-        filetypes=[("Текстовые файлы", "*.txt"), ("Все файлы", "*.*")]
+        title="Оберіть текстовий файл з матрицею",
+        filetypes=[("Текстові файли", "*.txt"), ("Усі файли", "*.*")]
     )
     if not filepath:
         return
 
     entry_path.delete(0, tk.END)
     entry_path.insert(0, filepath)
-    read_matrix()
-    is_matrix_corect = True
-    if len(matrix) != 19: is_matrix_corect = False
 
-    for i in range(len(matrix)):
-        if len(matrix[i]) != 19: 
-            is_matrix_corect = False
-            break
-    
-    if is_matrix_corect == True: check()
-    else: result_text.insert(tk.END, "Матриця не правильного розміру. Необхідний розмір 19х19.")
+    if not read_matrix():
+        return
+
+    if len(matrix) != N or not all(len(row) == N for row in matrix):
+        result_text.insert(tk.END, "Матриця не правильного розміру.\nНеобхідний розмір точно 19×19.")
+        matrix = None 
+        return
+
+    check()
     
 
 
 def read_matrix():
     global matrix
-    
     filepath = entry_path.get().strip()
+
     if not filepath or not os.path.isfile(filepath):
-        messagebox.showwarning("Ошибка", "Выберите файл")
-        return
+        messagebox.showwarning("Помилка", "Оберіть існуючий файл")
+        return False
+
+    temp = []
 
     try:
-        matrix = []
         with open(filepath, 'r', encoding='utf-8') as f:
-            for line in f:
+            for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
 
-                row = [int(x) for x in line.split() if x]
-                if row:
-                    matrix.append(row)
+                try:
+                    row = [int(x) for x in line.split() if x.strip()]
+                    if row:
+                        temp.append(row)
+                except ValueError:
+                    messagebox.showerror(
+                        "Помилка формату",
+                        f"Не число в рядку {line_num}:\n{line.strip()}\n\n"
+                        "Усі значення мають бути цілими числами."
+                    )
+                    return False
 
-        if not matrix:
-            messagebox.showwarning("Предупреждение", "В файле нет чисел")
-            return
+        if not temp:
+            messagebox.showwarning("Попередження", "У файлі немає валідних рядків з числами")
+            return False
+
+        matrix = temp
+        return True
 
     except Exception as e:
-        messagebox.showerror("Ошибка", str(e))
+        messagebox.showerror("Помилка читання файлу", f"{type(e).__name__}: {e}")
+        return False
 
 
 def check():
@@ -69,7 +83,7 @@ def check():
         (0, 1),
         (1, 0),
         (1, 1),
-        (-1, 1)
+        (1, -1)
     ]
 
     players = [1,2]
@@ -109,9 +123,6 @@ def check():
     result_text.insert(tk.END, "Переможця немає")
 
     
-       
-
-
 
 root = tk.Tk()
 root.geometry("640x520")
